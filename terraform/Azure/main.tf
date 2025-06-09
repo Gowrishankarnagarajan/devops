@@ -2,32 +2,58 @@ provider "azurerm" {
   features {}
 }
 
-# Resource Group (uncomment if you need to create one)
-# resource "azurerm_resource_group" "example" {
-#   name     = "example-resources"
-#   location = "West Europe"
-# }
+resource "azurerm_resource_group" "example" {
+  name     = "example-vm-rg"
+  location = "West Europe"
+}
 
-resource "azurerm_app_service_plan" "example" {
-  name                = "example-appserviceplan"
-  location            = "West Europe"
-  resource_group_name = "example-resources" # Change to your resource group name
-  sku {
-    tier = "Standard"
-    size = "S1"
+resource "azurerm_virtual_network" "example" {
+  name                = "example-vnet"
+  address_space       = ["10.0.0.0/16"]
+  location            = azurerm_resource_group.example.location
+  resource_group_name = azurerm_resource_group.example.name
+}
+
+resource "azurerm_subnet" "example" {
+  name                 = "example-subnet"
+  resource_group_name  = azurerm_resource_group.example.name
+  virtual_network_name = azurerm_virtual_network.example.name
+  address_prefixes     = ["10.0.1.0/24"]
+}
+
+resource "azurerm_network_interface" "example" {
+  name                = "example-nic"
+  location            = azurerm_resource_group.example.location
+  resource_group_name = azurerm_resource_group.example.name
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.example.id
+    private_ip_address_allocation = "Dynamic"
   }
 }
 
-resource "azurerm_app_service" "app1" {
-  name                = "example-app1"
-  location            = azurerm_app_service_plan.example.location
-  resource_group_name = azurerm_app_service_plan.example.resource_group_name
-  app_service_plan_id = azurerm_app_service_plan.example.id
-}
+resource "azurerm_linux_virtual_machine" "example" {
+  name                = "example-vm"
+  resource_group_name = azurerm_resource_group.example.name
+  location            = azurerm_resource_group.example.location
+  size                = "Standard_B1ls" # Free tier eligible
+  admin_username      = "azureuser"
+  network_interface_ids = [
+    azurerm_network_interface.example.id,
+  ]
+  admin_password = "P@ssword1234!" # Use a secure password in production
 
-resource "azurerm_app_service" "app2" {
-  name                = "example-app2"
-  location            = azurerm_app_service_plan.example.location
-  resource_group_name = azurerm_app_service_plan.example.resource_group_name
-  app_service_plan_id = azurerm_app_service_plan.example.id
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+    name                 = "example-osdisk"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "UbuntuServer"
+    sku       = "18.04-LTS"
+    version   = "latest"
+  }
 }

@@ -47,7 +47,7 @@ jobs:
 
       - name: Wait 2 hours before destroy
         if: ${{ success() }}
-        run: sleep 7200
+        run: sleep 600
 
       - name: Terraform Destroy
         if: ${{ success() }}
